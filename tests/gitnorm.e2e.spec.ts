@@ -1,4 +1,7 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { strToU8, unzipSync, zipSync } from "fflate";
+import { existsSync } from "node:fs";
+import path from "node:path";
 
 async function addVirtualPasskey(context: BrowserContext, page: Page) {
   const client = await context.newCDPSession(page);
@@ -21,7 +24,9 @@ async function register(page: Page, displayName: string, handle: string) {
   await page.getByRole("button", { name: "Create my account →" }).click();
   await expect(
     page.getByRole("heading", {
-      name: new RegExp(`Good afternoon, ${displayName.split(" ")[0]}`),
+      name: new RegExp(
+        `Good (?:morning|afternoon|evening), ${displayName.split(" ")[0]}`,
+      ),
     }),
   ).toBeVisible();
 }
@@ -65,8 +70,105 @@ test("standalone passkey accounts preserve private work and revoke public links"
   };
   const projectId = detail.project.id;
   const slug = detail.project.slug;
-  const fileId = detail.files[0].id;
+  const originalFileId = detail.files[0].id;
+  let fileId = originalFileId;
   const sourceVersionId = detail.versions[0].id;
+
+  const firstDownload = await owner.request.get(
+    `/api/projects/${projectId}/download`,
+  );
+  expect(firstDownload.status()).toBe(200);
+  const firstArchive = unzipSync(new Uint8Array(await firstDownload.body()));
+  expect(Object.keys(firstArchive).sort()).toEqual([
+    "test-fixtures/weekend-picker/README.md",
+    "test-fixtures/weekend-picker/index.html",
+  ]);
+  expect(Object.keys(firstArchive)).not.toContain(
+    "test-fixtures/weekend-picker/.env",
+  );
+
+  let updateIntentId = "";
+  owner.on("response", async (response) => {
+    if (
+      response.request().method() === "POST" &&
+      response.url().endsWith("/api/uploads/intents")
+    ) {
+      const data = (await response.json()) as { intentId?: string };
+      updateIntentId = data.intentId || updateIntentId;
+    }
+  });
+  await owner.getByRole("button", { name: "＋ Add an update" }).click();
+  const updateChooserPromise = owner.waitForEvent("filechooser");
+  await owner.getByRole("button", { name: "Choose .zip" }).click();
+  const updateChooser = await updateChooserPromise;
+  const updateZip = zipSync({
+    "test-fixtures/weekend-picker/index.html": strToU8(
+      "<main><h1>Weekend Picker v2</h1></main>",
+    ),
+    "test-fixtures/weekend-picker/README.md": strToU8("# Weekend Picker\n"),
+    "test-fixtures/weekend-picker/app.js": strToU8("console.log('ready')"),
+  });
+  await updateChooser.setFiles({
+    name: "weekend-picker-v2.zip",
+    mimeType: "application/zip",
+    buffer: Buffer.from(updateZip),
+  });
+  await owner.getByLabel("What changed?").fill("Added the picker logic");
+  await owner.getByRole("button", { name: "Save new version" }).click();
+  await expect(
+    owner.getByText("1 added · 2 updated", { exact: true }),
+  ).toBeVisible();
+  expect(updateIntentId).toBeTruthy();
+  const replayStatuses = await owner.evaluate(
+    async ({ projectId, intentId }) =>
+      Promise.all(
+        Array.from(
+          { length: 5 },
+          async () =>
+            (
+              await fetch(`/api/projects/${projectId}/versions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ intentId, note: "Replay" }),
+              })
+            ).status,
+        ),
+      ),
+    { projectId, intentId: updateIntentId },
+  );
+  expect(replayStatuses.every((status) => status === 400)).toBe(true);
+
+  await owner.getByRole("button", { name: "Settings" }).click();
+  await owner.getByLabel("One-line description").fill("Pick a better weekend");
+  await owner
+    .getByLabel("About this project")
+    .fill("A tiny planner for choosing the best weekend.");
+  await owner.getByRole("button", { name: "Save changes" }).click();
+  await expect(owner.getByText("Pick a better weekend")).toBeVisible();
+
+  const updatedDownload = await owner.request.get(
+    `/api/projects/${projectId}/download`,
+  );
+  const updatedArchive = unzipSync(
+    new Uint8Array(await updatedDownload.body()),
+  );
+  expect(Object.keys(updatedArchive).sort()).toEqual([
+    "test-fixtures/weekend-picker/README.md",
+    "test-fixtures/weekend-picker/app.js",
+    "test-fixtures/weekend-picker/index.html",
+  ]);
+  expect(
+    new TextDecoder().decode(
+      updatedArchive["test-fixtures/weekend-picker/app.js"],
+    ),
+  ).toBe("console.log('ready')");
+  const updatedDetail = (await owner.evaluate(
+    async (projectId) => (await fetch(`/api/projects/${projectId}`)).json(),
+    projectId,
+  )) as {
+    files: Array<{ id: string }>;
+  };
+  fileId = updatedDetail.files[0].id;
 
   const otherContext = await browser.newContext();
   const other = await otherContext.newPage();
@@ -194,7 +296,9 @@ test("standalone passkey accounts preserve private work and revoke public links"
   await owner.getByRole("button", { name: "Sign in" }).last().click();
   await owner.getByRole("button", { name: "Sign in with a passkey →" }).click();
   await expect(
-    owner.getByRole("heading", { name: /Good afternoon, Owner/ }),
+    owner.getByRole("heading", {
+      name: /Good (?:morning|afternoon|evening), Owner/,
+    }),
   ).toBeVisible();
 
   expect(
@@ -211,7 +315,33 @@ test("standalone passkey accounts preserve private work and revoke public links"
       fileId,
     ),
   ).toBe(404);
+  const abandoned = zipSync({ "unfinished/readme.txt": strToU8("unfinished") });
+  const abandonedStorageKey = await owner.evaluate(async (bytes) => {
+    const intent = (await (
+      await fetch("/api/uploads/intents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operation: "create_project",
+          expectedSize: bytes.length,
+          filename: "unfinished.zip",
+        }),
+      })
+    ).json()) as { intentId: string; storageKey: string };
+    const upload = await fetch(`/api/uploads/local/${intent.intentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/zip" },
+      body: new Uint8Array(bytes),
+    });
+    if (!upload.ok) throw new Error("Pending upload fixture failed.");
+    return intent.storageKey;
+  }, Array.from(abandoned));
   await owner.evaluate(async () => fetch("/api/profile", { method: "DELETE" }));
+  expect(
+    existsSync(
+      path.join(process.cwd(), ".gitnorm", "blobs", abandonedStorageKey),
+    ),
+  ).toBe(false);
   await other.evaluate(async () => fetch("/api/profile", { method: "DELETE" }));
   await expect((await owner.request.get("/api/auth/session")).status()).toBe(
     401,

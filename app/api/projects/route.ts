@@ -2,19 +2,17 @@ import {
   currentProfile,
   ensureSchema,
   getD1,
-  getFilesBucket,
   json,
   makeId,
   makeSlug,
-  MAX_FILES,
-  MAX_FILE_SIZE,
-  MAX_PROJECT_SIZE,
   MAX_PROJECTS,
-  requestBodyAllowed,
-  safePath,
-  sha256,
   validMutation,
 } from "@/lib/gitnorm";
+import {
+  markUploadCommitted,
+  releaseUploadClaim,
+  verifiedUploadIntent,
+} from "@/lib/uploads";
 
 export async function GET(request: Request) {
   await ensureSchema();
@@ -42,8 +40,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   if (!validMutation(request))
     return json({ error: "This request came from an unexpected site." }, 403);
-  if (!requestBodyAllowed(request))
-    return json({ error: "That upload is too large for GitNorm." }, 413);
   const profile = await currentProfile();
   if (!profile)
     return json({ error: "Please sign in before adding a project." }, 401);
@@ -60,83 +56,43 @@ export async function POST(request: Request) {
       },
       409,
     );
+
+  let activeIntentId = "";
   try {
-    const form = await request.formData();
-    const title = String(form.get("title") || "")
+    const body = (await request.json()) as {
+      intentId?: string;
+      title?: string;
+      description?: string;
+      visibility?: string;
+      note?: string;
+    };
+    const title = String(body.title || "")
       .trim()
       .slice(0, 80);
-    const description = String(form.get("description") || "")
+    const description = String(body.description || "")
       .trim()
       .slice(0, 220);
-    const visibility =
-      form.get("visibility") === "public" ? "public" : "private";
-    const note = String(form.get("note") || "First saved version")
+    const visibility = body.visibility === "public" ? "public" : "private";
+    const note = String(body.note || "First saved version")
       .trim()
       .slice(0, 160);
-    const files = form
-      .getAll("files")
-      .filter((item): item is File => item instanceof File && item.size >= 0);
-    const paths = form.getAll("paths").map(String);
     if (!title) return json({ error: "Give your project a name first." }, 400);
-    if (!files.length)
-      return json({ error: "Choose at least one file to save." }, 400);
-    if (files.length > MAX_FILES)
-      return json(
-        {
-          error: `That project has more than ${MAX_FILES} files. Try a smaller folder for now.`,
-        },
-        400,
-      );
-    const total = files.reduce((sum, file) => sum + file.size, 0);
-    if (total > MAX_PROJECT_SIZE)
-      return json(
-        {
-          error:
-            "That project is over 30 MB. Try removing large files and add it again.",
-        },
-        400,
-      );
-    if (files.some((file) => file.size > MAX_FILE_SIZE))
-      return json(
-        { error: "One of those files is over 8 MB. Remove it and try again." },
-        400,
-      );
+    if (!body.intentId)
+      return json({ error: "Choose a project folder to upload first." }, 400);
 
-    const projectId = makeId("prj");
+    const { intent, archive } = await verifiedUploadIntent({
+      intentId: body.intentId,
+      ownerId: profile.id,
+      operation: "create_project",
+    });
+    activeIntentId = intent.id;
+    const projectId = intent.projectId;
     const versionId = makeId("ver");
     const now = Date.now();
-    const saved: Array<{
-      id: string;
-      path: string;
-      storageKey: string;
-      hash: string;
-      mimeType: string;
-      size: number;
-    }> = [];
-    for (let index = 0; index < files.length; index++) {
-      const file = files[index];
-      const path = safePath(paths[index] || file.name);
-      const bytes = await file.arrayBuffer();
-      const hash = await sha256(bytes);
-      const storageKey = `projects/${projectId}/blobs/${hash}`;
-      if (!(await getFilesBucket().head(storageKey)))
-        await getFilesBucket().put(storageKey, bytes, {
-          httpMetadata: {
-            contentType: file.type || "application/octet-stream",
-          },
-        });
-      saved.push({
-        id: makeId("fil"),
-        path,
-        storageKey,
-        hash,
-        mimeType: file.type || "application/octet-stream",
-        size: file.size,
-      });
-    }
     const iconChoices = ["orbit", "sprout", "prism", "wave"];
     const accentChoices = ["mint", "sun", "lilac", "coral", "sky"];
-    const statements = [
+
+    await getD1().batch([
       getD1()
         .prepare(
           `INSERT INTO projects (id,owner_id,slug,title,description,about,icon,accent,visibility,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
@@ -161,41 +117,43 @@ export async function POST(request: Request) {
         .bind(projectId),
       getD1()
         .prepare(
-          `INSERT INTO versions (id,project_id,number,note,summary,file_count,total_size,created_at) VALUES (?,?,?,?,?,?,?,?)`,
+          `INSERT INTO versions (id,project_id,upload_intent_id,number,note,summary,file_count,total_size,created_at) VALUES (?,?,?,?,?,?,?,?,?)`,
         )
         .bind(
           versionId,
           projectId,
+          intent.id,
           1,
           note,
-          `${files.length} files safely saved`,
-          files.length,
-          total,
+          `${archive.fileCount} files safely saved`,
+          archive.fileCount,
+          archive.totalSize,
           now,
         ),
-      ...saved.map((file) =>
+      ...archive.files.map((file) =>
         getD1()
           .prepare(
             `INSERT INTO project_files (id,version_id,project_id,path,storage_key,hash,mime_type,size) VALUES (?,?,?,?,?,?,?,?)`,
           )
           .bind(
-            file.id,
+            makeId("fil"),
             versionId,
             projectId,
             file.path,
-            file.storageKey,
+            intent.storageKey,
             file.hash,
             file.mimeType,
             file.size,
           ),
       ),
-    ];
-    await getD1().batch(statements);
+      markUploadCommitted(intent.id, now),
+    ]);
     return json(
       { id: projectId, message: "Your project is safely saved." },
       201,
     );
   } catch (error) {
+    if (activeIntentId) await releaseUploadClaim(activeIntentId);
     return json(
       {
         error:

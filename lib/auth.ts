@@ -1,4 +1,5 @@
 import { ensureSchema, getD1, makeId, sha256Text } from "@/lib/gitnorm";
+import { trustedRequestOrigin } from "@/lib/runtime";
 
 export const SESSION_SECONDS = 60 * 60 * 24 * 30;
 export const CHALLENGE_SECONDS = 60 * 10;
@@ -30,15 +31,16 @@ export function toBase64url(bytes: Uint8Array) {
   return base64url(bytes);
 }
 export function relyingParty(request: Request) {
-  const url = new URL(request.url);
-  if (url.hostname === "localhost" || url.hostname === "127.0.0.1")
-    return { origin: url.origin, rpID: url.hostname };
-  const productionHost = "gitnorm.blocpodcreative.chatgpt.site";
-  if (url.hostname !== productionHost)
-    throw new Error(
-      "Passkeys are available only on GitNorm's canonical address.",
-    );
-  return { origin: `https://${productionHost}`, rpID: productionHost };
+  const origin = trustedRequestOrigin(request);
+  const hostname = new URL(origin).hostname;
+  const configuredRpId = process.env.WEBAUTHN_RP_ID?.trim();
+  if (
+    configuredRpId &&
+    hostname !== configuredRpId &&
+    !hostname.endsWith(`.${configuredRpId}`)
+  )
+    throw new Error("This hostname is outside GitNorm's passkey domain.");
+  return { origin, rpID: configuredRpId || hostname };
 }
 export function authCookieName(
   request: Request,

@@ -1,7 +1,7 @@
 import { cleanHandle, validHandle } from "@/lib/auth";
 import {
+  cleanupGarbageObjects,
   currentProfile,
-  deleteProjectFully,
   getD1,
   json,
   validMutation,
@@ -57,19 +57,31 @@ export async function DELETE(request: Request) {
     return json({ error: "This request came from an unexpected site." }, 403);
   const profile = await currentProfile();
   if (!profile) return json({ error: "Please sign in." }, 401);
-  const projects = await getD1()
-    .prepare("SELECT id FROM projects WHERE owner_id=?")
-    .bind(profile.id)
-    .all<{ id: string }>();
-  for (const project of projects.results)
-    await deleteProjectFully(project.id, profile.id);
+  const now = Date.now();
   await getD1().batch([
+    getD1()
+      .prepare(
+        `INSERT INTO garbage_objects (storage_key,created_at,delete_after)
+         SELECT DISTINCT f.storage_key,?,MAX(?,COALESCE((SELECT MAX(ui.token_expires_at) FROM upload_intents ui WHERE ui.storage_key=f.storage_key),?))
+         FROM project_files f JOIN projects p ON p.id=f.project_id WHERE p.owner_id=?
+         ON CONFLICT(storage_key) DO UPDATE SET delete_after=MAX(delete_after,excluded.delete_after)`,
+      )
+      .bind(now, now, now, profile.id),
+    getD1()
+      .prepare(
+        `INSERT INTO garbage_objects (storage_key,created_at,delete_after)
+         SELECT storage_key,?,CASE WHEN MAX(token_expires_at)>? THEN MAX(token_expires_at) ELSE ? END
+         FROM upload_intents WHERE owner_id=? GROUP BY storage_key
+         ON CONFLICT(storage_key) DO UPDATE SET delete_after=MAX(delete_after,excluded.delete_after)`,
+      )
+      .bind(now, now, now, profile.id),
     getD1().prepare("DELETE FROM sessions WHERE user_id=?").bind(profile.id),
     getD1().prepare("DELETE FROM passkeys WHERE user_id=?").bind(profile.id),
     getD1().prepare("DELETE FROM profiles WHERE id=?").bind(profile.id),
   ]);
+  await cleanupGarbageObjects(500).catch(() => undefined);
   return json({
     message:
-      "Your GitNorm account and stored projects were permanently deleted.",
+      "Your GitNorm account was deleted. Stored uploads are securely removed after their upload authorizations expire.",
   });
 }

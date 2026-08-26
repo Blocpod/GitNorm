@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+import Image from "next/image";
 
 const PROJECT_ICONS = {
   orbit: "/icons/project-orbit.png",
@@ -21,11 +21,13 @@ export const projectIconNames = Object.keys(PROJECT_ICONS) as Array<
 
 export function BrandMark({ className = "" }: { className?: string }) {
   return (
-    <img
+    <Image
       className={className}
       src="/brand/gitnorm-mark.png"
       alt=""
       aria-hidden="true"
+      width={512}
+      height={512}
     />
   );
 }
@@ -45,11 +47,13 @@ export function ProjectIcon({
       ? (requested as keyof typeof PROJECT_ICONS)
       : LEGACY_PROJECT_ICONS[requested] || "orbit";
   return (
-    <img
+    <Image
       className={className}
       src={PROJECT_ICONS[key]}
       alt={alt}
       aria-hidden={alt ? undefined : "true"}
+      width={320}
+      height={320}
     />
   );
 }
@@ -68,11 +72,13 @@ export function WorkflowArt({
   className?: string;
 }) {
   return (
-    <img
+    <Image
       className={className}
       src={WORKFLOW_ART[step]}
       alt=""
       aria-hidden="true"
+      width={640}
+      height={640}
     />
   );
 }

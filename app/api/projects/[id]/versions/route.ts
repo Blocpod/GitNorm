@@ -2,18 +2,16 @@ import {
   allocateVersionNumber,
   currentProfile,
   getD1,
-  getFilesBucket,
   json,
   makeId,
-  MAX_FILES,
-  MAX_FILE_SIZE,
-  MAX_PROJECT_SIZE,
   MAX_VERSIONS,
-  requestBodyAllowed,
-  safePath,
-  sha256,
   validMutation,
 } from "@/lib/gitnorm";
+import {
+  markUploadCommitted,
+  releaseUploadClaim,
+  verifiedUploadIntent,
+} from "@/lib/uploads";
 
 export async function POST(
   request: Request,
@@ -21,8 +19,6 @@ export async function POST(
 ) {
   if (!validMutation(request))
     return json({ error: "This request came from an unexpected site." }, 403);
-  if (!requestBodyAllowed(request))
-    return json({ error: "That upload is too large for GitNorm." }, 413);
   const profile = await currentProfile();
   if (!profile) return json({ error: "Please sign in." }, 401);
   const { id } = await context.params;
@@ -44,23 +40,20 @@ export async function POST(
       },
       409,
     );
+
+  let activeIntentId = "";
   try {
-    const contentType = request.headers.get("content-type") || "";
-    const latest = await getD1()
-      .prepare(
-        "SELECT id,number FROM versions WHERE project_id=? ORDER BY number DESC LIMIT 1",
-      )
-      .bind(id)
-      .first<{ id: string; number: number }>();
-    if (contentType.includes("application/json")) {
-      const { restoreVersionId } = (await request.json()) as {
-        restoreVersionId?: string;
-      };
+    const body = (await request.json()) as {
+      restoreVersionId?: string;
+      intentId?: string;
+      note?: string;
+    };
+    if (body.restoreVersionId) {
       const source = await getD1()
         .prepare(
           "SELECT id,number,file_count AS fileCount,total_size AS totalSize FROM versions WHERE id=? AND project_id=?",
         )
-        .bind(restoreVersionId || "", id)
+        .bind(body.restoreVersionId, id)
         .first<{
           id: string;
           number: number;
@@ -72,9 +65,6 @@ export async function POST(
           { error: "That saved version is no longer available." },
           404,
         );
-      const newVersionId = makeId("ver");
-      const now = Date.now();
-      const number = await allocateVersionNumber(id);
       const sourceFiles = await getD1()
         .prepare(
           "SELECT path,storage_key AS storageKey,hash,mime_type AS mimeType,size FROM project_files WHERE version_id=?",
@@ -87,13 +77,16 @@ export async function POST(
           mimeType: string;
           size: number;
         }>();
+      const versionId = makeId("ver");
+      const now = Date.now();
+      const number = await allocateVersionNumber(id);
       await getD1().batch([
         getD1()
           .prepare(
             "INSERT INTO versions (id,project_id,number,note,summary,file_count,total_size,created_at) VALUES (?,?,?,?,?,?,?,?)",
           )
           .bind(
-            newVersionId,
+            versionId,
             id,
             number,
             `Restored saved version ${source.number}`,
@@ -109,7 +102,7 @@ export async function POST(
             )
             .bind(
               makeId("fil"),
-              newVersionId,
+              versionId,
               id,
               file.path,
               file.storageKey,
@@ -127,33 +120,21 @@ export async function POST(
       });
     }
 
-    const form = await request.formData();
-    const files = form
-      .getAll("files")
-      .filter((item): item is File => item instanceof File);
-    const paths = form.getAll("paths").map(String);
-    const note = String(form.get("note") || "Added an update")
-      .trim()
-      .slice(0, 160);
-    if (!files.length)
+    if (!body.intentId)
       return json({ error: "Choose the updated project folder first." }, 400);
-    if (files.length > MAX_FILES)
-      return json(
-        { error: `That update has more than ${MAX_FILES} files.` },
-        400,
-      );
-    const total = files.reduce((sum, file) => sum + file.size, 0);
-    if (
-      total > MAX_PROJECT_SIZE ||
-      files.some((file) => file.size > MAX_FILE_SIZE)
-    )
-      return json(
-        {
-          error:
-            "That update is too large. Keep it under 30 MB, with no single file over 8 MB.",
-        },
-        400,
-      );
+    const { intent, archive } = await verifiedUploadIntent({
+      intentId: body.intentId,
+      ownerId: profile.id,
+      operation: "create_version",
+      projectId: id,
+    });
+    activeIntentId = intent.id;
+    const latest = await getD1()
+      .prepare(
+        "SELECT id FROM versions WHERE project_id=? ORDER BY number DESC LIMIT 1",
+      )
+      .bind(id)
+      .first<{ id: string }>();
     const previous = latest
       ? await getD1()
           .prepare("SELECT path,hash FROM project_files WHERE version_id=?")
@@ -163,44 +144,14 @@ export async function POST(
     const before = new Map(
       previous.results.map((file) => [file.path, file.hash]),
     );
-    const versionId = makeId("ver");
-    const saved: Array<{
-      id: string;
-      path: string;
-      storageKey: string;
-      hash: string;
-      mimeType: string;
-      size: number;
-    }> = [];
-    let added = 0,
-      changed = 0;
-    for (let index = 0; index < files.length; index++) {
-      const file = files[index];
-      const path = safePath(paths[index] || file.name);
-      const bytes = await file.arrayBuffer();
-      const hash = await sha256(bytes);
-      const storageKey = `projects/${id}/blobs/${hash}`;
-      if (!(await getFilesBucket().head(storageKey)))
-        await getFilesBucket().put(storageKey, bytes, {
-          httpMetadata: {
-            contentType: file.type || "application/octet-stream",
-          },
-        });
-      if (!before.has(path)) added++;
-      else if (before.get(path) !== hash) changed++;
-      before.delete(path);
-      saved.push({
-        id: makeId("fil"),
-        path,
-        storageKey,
-        hash,
-        mimeType: file.type || "application/octet-stream",
-        size: file.size,
-      });
+    let added = 0;
+    let changed = 0;
+    for (const file of archive.files) {
+      if (!before.has(file.path)) added += 1;
+      else if (before.get(file.path) !== file.hash) changed += 1;
+      before.delete(file.path);
     }
     const removed = before.size;
-    const now = Date.now();
-    const number = await allocateVersionNumber(id);
     const summary =
       [
         added && `${added} added`,
@@ -209,23 +160,39 @@ export async function POST(
       ]
         .filter(Boolean)
         .join(" · ") || "No file changes";
+    const versionId = makeId("ver");
+    const now = Date.now();
+    const number = await allocateVersionNumber(id);
+    const note = String(body.note || "Added an update")
+      .trim()
+      .slice(0, 160);
     await getD1().batch([
       getD1()
         .prepare(
-          "INSERT INTO versions (id,project_id,number,note,summary,file_count,total_size,created_at) VALUES (?,?,?,?,?,?,?,?)",
+          "INSERT INTO versions (id,project_id,upload_intent_id,number,note,summary,file_count,total_size,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
         )
-        .bind(versionId, id, number, note, summary, files.length, total, now),
-      ...saved.map((file) =>
+        .bind(
+          versionId,
+          id,
+          intent.id,
+          number,
+          note,
+          summary,
+          archive.fileCount,
+          archive.totalSize,
+          now,
+        ),
+      ...archive.files.map((file) =>
         getD1()
           .prepare(
             "INSERT INTO project_files (id,version_id,project_id,path,storage_key,hash,mime_type,size) VALUES (?,?,?,?,?,?,?,?)",
           )
           .bind(
-            file.id,
+            makeId("fil"),
             versionId,
             id,
             file.path,
-            file.storageKey,
+            intent.storageKey,
             file.hash,
             file.mimeType,
             file.size,
@@ -234,9 +201,11 @@ export async function POST(
       getD1()
         .prepare("UPDATE projects SET updated_at=? WHERE id=? AND owner_id=?")
         .bind(now, id, profile.id),
+      markUploadCommitted(intent.id, now),
     ]);
     return json({ message: `New saved version created: ${summary}.`, summary });
   } catch (error) {
+    if (activeIntentId) await releaseUploadClaim(activeIntentId);
     return json(
       {
         error:

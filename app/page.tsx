@@ -2,11 +2,7 @@ import GitNormApp from "./components/GitNormApp";
 import AuthPanel from "./components/AuthPanel";
 import Link from "next/link";
 import { currentProfile } from "@/lib/gitnorm";
-import {
-  BrandMark,
-  ProjectIcon,
-  WorkflowArt,
-} from "./components/VisualAssets";
+import { BrandMark, ProjectIcon, WorkflowArt } from "./components/VisualAssets";
 
 export const dynamic = "force-dynamic";
 

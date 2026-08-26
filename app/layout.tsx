@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
+import { canonicalOrigin } from "@/lib/runtime";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.SITE_URL || "https://gitnorm.blocpodcreative.chatgpt.site",
-  ),
+  metadataBase: new URL(canonicalOrigin()),
   title: "GitNorm — A home for the software you make",
   description:
     "Save, update, and share the apps you make without learning Git.",

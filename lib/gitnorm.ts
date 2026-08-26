@@ -1,5 +1,7 @@
-import { env } from "cloudflare:workers";
 import { cookies } from "next/headers";
+import { getDatabase } from "@/lib/database";
+import { migrateDatabase } from "@/lib/database-schema";
+import { deleteObjects } from "@/lib/storage";
 
 export const MAX_FILES = 250;
 export const MAX_FILE_SIZE = 8 * 1024 * 1024;
@@ -7,51 +9,10 @@ export const MAX_PROJECT_SIZE = 30 * 1024 * 1024;
 export const MAX_PROJECTS = 50;
 export const MAX_VERSIONS = 100;
 export const MAX_REQUEST_SIZE = 34 * 1024 * 1024;
-let schemaReady = false;
-
-export function getD1(): D1Database {
-  return env.DB;
-}
-export function getFilesBucket(): R2Bucket {
-  return env.FILES;
-}
+export const getD1 = getDatabase;
 
 export async function ensureSchema() {
-  if (schemaReady) return;
-  const db = getD1();
-  const sql = [
-    `CREATE TABLE IF NOT EXISTS profiles (id TEXT PRIMARY KEY, email TEXT NOT NULL, display_name TEXT NOT NULL, handle TEXT NOT NULL, bio TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_handle ON profiles(handle)`,
-    `CREATE TABLE IF NOT EXISTS passkeys (credential_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, public_key TEXT NOT NULL, counter INTEGER NOT NULL DEFAULT 0, transports TEXT NOT NULL DEFAULT '[]', device_type TEXT NOT NULL, backed_up INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, last_used_at INTEGER)`,
-    `CREATE INDEX IF NOT EXISTS idx_passkeys_user ON passkeys(user_id)`,
-    `CREATE TABLE IF NOT EXISTS auth_challenges (token_hash TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('register','login')), challenge TEXT NOT NULL, user_id TEXT, handle TEXT, display_name TEXT, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL)`,
-    `CREATE INDEX IF NOT EXISTS idx_auth_challenges_expiry ON auth_challenges(expires_at)`,
-    `CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL)`,
-    `CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)`,
-    `CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES profiles(id), slug TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', about TEXT NOT NULL DEFAULT '', icon TEXT NOT NULL DEFAULT 'orbit', accent TEXT NOT NULL DEFAULT 'mint', visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private','public')), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER)`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug)`,
-    `CREATE INDEX IF NOT EXISTS idx_projects_owner_updated ON projects(owner_id, updated_at DESC)`,
-    `CREATE INDEX IF NOT EXISTS idx_projects_public_updated ON projects(visibility, updated_at DESC)`,
-    `CREATE TABLE IF NOT EXISTS versions (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, number INTEGER NOT NULL, note TEXT NOT NULL DEFAULT '', summary TEXT NOT NULL DEFAULT '', file_count INTEGER NOT NULL DEFAULT 0, total_size INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_versions_project_number ON versions(project_id, number)`,
-    `CREATE INDEX IF NOT EXISTS idx_versions_project_created ON versions(project_id, created_at DESC)`,
-    `CREATE TABLE IF NOT EXISTS project_files (id TEXT PRIMARY KEY, version_id TEXT NOT NULL REFERENCES versions(id) ON DELETE CASCADE, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, path TEXT NOT NULL, storage_key TEXT NOT NULL, hash TEXT NOT NULL, mime_type TEXT NOT NULL, size INTEGER NOT NULL)`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_files_version_path ON project_files(version_id, path)`,
-    `CREATE INDEX IF NOT EXISTS idx_files_project_version ON project_files(project_id, version_id)`,
-    `CREATE TABLE IF NOT EXISTS project_version_counters (project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE, next_version INTEGER NOT NULL)`,
-    `CREATE TABLE IF NOT EXISTS garbage_objects (storage_key TEXT PRIMARY KEY, created_at INTEGER NOT NULL)`,
-    `CREATE TABLE IF NOT EXISTS rate_limits (key_hash TEXT NOT NULL, window_start INTEGER NOT NULL, attempts INTEGER NOT NULL, PRIMARY KEY(key_hash,window_start))`,
-  ];
-  await db.batch(sql.map((statement) => db.prepare(statement)));
-  const profileColumns = await db
-    .prepare("PRAGMA table_info(profiles)")
-    .all<{ name: string }>();
-  if (!profileColumns.results.some((column) => column.name === "bio"))
-    await db
-      .prepare("ALTER TABLE profiles ADD COLUMN bio TEXT NOT NULL DEFAULT ''")
-      .run();
-  schemaReady = true;
+  await migrateDatabase();
 }
 
 export async function currentProfile() {
@@ -178,37 +139,52 @@ export async function deleteProjectFully(projectId: string, ownerId: string) {
     .bind(projectId, ownerId)
     .first();
   if (!project) return false;
-  const objects = await getD1()
-    .prepare(
-      "SELECT DISTINCT storage_key AS storageKey FROM project_files WHERE project_id=?",
-    )
-    .bind(projectId)
-    .all<{ storageKey: string }>();
   const now = Date.now();
   await getD1().batch([
-    ...objects.results.map((object) =>
-      getD1()
-        .prepare(
-          "INSERT OR IGNORE INTO garbage_objects (storage_key,created_at) VALUES (?,?)",
-        )
-        .bind(object.storageKey, now),
-    ),
+    getD1()
+      .prepare(
+        `INSERT INTO garbage_objects (storage_key,created_at,delete_after)
+         SELECT DISTINCT f.storage_key,?,MAX(?,COALESCE((SELECT MAX(ui.token_expires_at) FROM upload_intents ui WHERE ui.storage_key=f.storage_key),?))
+         FROM project_files f WHERE f.project_id=?
+         ON CONFLICT(storage_key) DO UPDATE SET delete_after=MAX(delete_after,excluded.delete_after)`,
+      )
+      .bind(now, now, now, projectId),
+    getD1()
+      .prepare(
+        `INSERT INTO garbage_objects (storage_key,created_at,delete_after)
+         SELECT storage_key,?,CASE WHEN MAX(token_expires_at)>? THEN MAX(token_expires_at) ELSE ? END
+         FROM upload_intents WHERE project_id=? GROUP BY storage_key
+         ON CONFLICT(storage_key) DO UPDATE SET delete_after=MAX(delete_after,excluded.delete_after)`,
+      )
+      .bind(now, now, now, projectId),
+    getD1()
+      .prepare("DELETE FROM upload_intents WHERE project_id=? AND owner_id=?")
+      .bind(projectId, ownerId),
     getD1()
       .prepare("DELETE FROM projects WHERE id=? AND owner_id=?")
       .bind(projectId, ownerId),
   ]);
-  const keys = objects.results.map((object) => object.storageKey);
-  if (keys.length) {
-    await getFilesBucket().delete(keys);
-    await getD1().batch(
-      keys.map((key) =>
-        getD1()
-          .prepare("DELETE FROM garbage_objects WHERE storage_key=?")
-          .bind(key),
-      ),
-    );
-  }
+  await cleanupGarbageObjects(500).catch(() => undefined);
   return true;
+}
+export async function cleanupGarbageObjects(limit = 50) {
+  const objects = await getD1()
+    .prepare(
+      "SELECT storage_key AS storageKey FROM garbage_objects WHERE delete_after<=? ORDER BY created_at ASC LIMIT ?",
+    )
+    .bind(Date.now(), limit)
+    .all<{ storageKey: string }>();
+  const keys = objects.results.map((object) => object.storageKey);
+  if (!keys.length) return 0;
+  await deleteObjects(keys);
+  await getD1().batch(
+    keys.map((key) =>
+      getD1()
+        .prepare("DELETE FROM garbage_objects WHERE storage_key=?")
+        .bind(key),
+    ),
+  );
+  return keys.length;
 }
 export function json(data: unknown, status = 200) {
   return Response.json(data, {

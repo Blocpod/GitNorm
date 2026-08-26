@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { unzip } from "fflate";
+import { upload } from "@vercel/blob/client";
+import { unzip, zipSync } from "fflate";
 import { BrandMark, ProjectIcon, WorkflowArt } from "./VisualAssets";
 
 type Project = {
@@ -33,6 +34,13 @@ type Version = {
 type ProjectFile = { id: string; path: string; mimeType: string; size: number };
 type Detail = { project: Project; versions: Version[]; files: ProjectFile[] };
 type PickedFile = { file: File; path: string };
+type UploadSubmission = {
+  files: PickedFile[];
+  title?: string;
+  description?: string;
+  visibility?: "private" | "public";
+  note: string;
+};
 type ApiData = {
   error?: string;
   message?: string;
@@ -44,13 +52,35 @@ type ApiData = {
   versions?: Version[];
   files?: ProjectFile[];
 };
+type UploadIntentData = ApiData & {
+  intentId?: string;
+  storageKey?: string;
+  mode?: "local" | "blob";
+};
 
 const CLIENT_MAX_FILES = 250;
 const CLIENT_MAX_FILE_SIZE = 8 * 1024 * 1024;
 const CLIENT_MAX_PROJECT_SIZE = 30 * 1024 * 1024;
+const CLIENT_MAX_ARCHIVE_SIZE = 34 * 1024 * 1024;
+
+function normalizedUploadPath(raw: string) {
+  const path = raw.normalize("NFC").replaceAll("\\", "/");
+  const parts = path.split("/");
+  if (
+    !path ||
+    path.startsWith("/") ||
+    /^[a-z]:\//i.test(path) ||
+    path.length > 500 ||
+    /[\u0000-\u001f\u007f]/.test(path) ||
+    parts.some((part) => !part || part === "." || part === "..")
+  ) {
+    throw new Error("One of those files has an unsafe path.");
+  }
+  return path;
+}
 
 function blockedUploadPath(raw: string) {
-  const path = raw.normalize("NFC").replaceAll("\\", "/");
+  const path = normalizedUploadPath(raw);
   const parts = path.toLowerCase().split("/");
   return (
     parts.some((part) =>
@@ -81,6 +111,7 @@ async function boundedUnzip(file: File) {
   let count = 0;
   let skipped = 0;
   let violation = "";
+  const seen = new Set<string>();
   const archive = await new Promise<Record<string, Uint8Array>>(
     (resolve, reject) => {
       unzip(
@@ -88,7 +119,19 @@ async function boundedUnzip(file: File) {
         {
           filter(entry) {
             if (violation || entry.name.endsWith("/")) return false;
-            if (blockedUploadPath(entry.name)) {
+            let normalizedPath = "";
+            try {
+              normalizedPath = normalizedUploadPath(entry.name);
+            } catch (error) {
+              violation = message(error);
+              return false;
+            }
+            if (seen.has(normalizedPath)) {
+              violation = `That .zip contains “${normalizedPath}” more than once.`;
+              return false;
+            }
+            seen.add(normalizedPath);
+            if (blockedUploadPath(normalizedPath)) {
               skipped++;
               return false;
             }
@@ -113,13 +156,88 @@ async function boundedUnzip(file: File) {
       );
     },
   );
-  const entries = Object.entries(archive).map(([path, data]) => ({
-    path,
-    file: new File([data as BlobPart], path.split("/").pop() || "file", {
-      type: inferredMime(path),
-    }),
-  }));
+  const entries = Object.entries(archive).map(([rawPath, data]) => {
+    const path = normalizedUploadPath(rawPath);
+    return {
+      path,
+      file: new File([data as BlobPart], path.split("/").pop() || "file", {
+        type: inferredMime(path),
+      }),
+    };
+  });
   return { entries, skipped };
+}
+
+async function createArchive(files: PickedFile[]) {
+  const entries: Record<string, Uint8Array> = Object.create(null) as Record<
+    string,
+    Uint8Array
+  >;
+  for (const { file, path: rawPath } of files) {
+    const path = normalizedUploadPath(rawPath);
+    if (entries[path])
+      throw new Error(`Your project contains “${path}” more than once.`);
+    entries[path] = new Uint8Array(await file.arrayBuffer());
+  }
+  const bytes = zipSync(entries, { level: 6 });
+  if (bytes.byteLength > CLIENT_MAX_ARCHIVE_SIZE)
+    throw new Error("That project is too large to save as a ZIP archive.");
+  return bytes;
+}
+
+function archiveFilename(value: string) {
+  const base = value
+    .normalize("NFKC")
+    .replace(/[^a-z0-9._-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
+  return `${base || "gitnorm-project"}.zip`;
+}
+
+async function uploadArchive(
+  submission: UploadSubmission,
+  operation: "create_project" | "create_version",
+  projectId?: string,
+  projectName = "gitnorm-project",
+) {
+  const bytes = await createArchive(submission.files);
+  const filename = archiveFilename(submission.title || projectName);
+  const intentResponse = await fetch("/api/uploads/intents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      operation,
+      projectId,
+      expectedSize: bytes.byteLength,
+      filename,
+    }),
+  });
+  const intent = (await intentResponse.json()) as UploadIntentData;
+  if (!intentResponse.ok) throw new Error(intent.error);
+  if (!intent.intentId || !intent.storageKey || !intent.mode)
+    throw new Error("GitNorm could not prepare this upload. Please try again.");
+
+  const archive = new Blob([bytes as BlobPart], { type: "application/zip" });
+  if (intent.mode === "local") {
+    const response = await fetch(`/api/uploads/local/${intent.intentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/zip" },
+      body: archive,
+    });
+    if (!response.ok) {
+      const data = (await response.json().catch(() => ({}))) as ApiData;
+      throw new Error(data.error || "GitNorm could not upload that project.");
+    }
+  } else {
+    await upload(intent.storageKey, archive, {
+      access: "private",
+      contentType: "application/zip",
+      handleUploadUrl: "/api/uploads/blob",
+      clientPayload: JSON.stringify({ intentId: intent.intentId }),
+      multipart: archive.size > 5 * 1024 * 1024,
+    });
+  }
+  return intent.intentId;
 }
 
 export default function GitNormApp({
@@ -360,12 +478,25 @@ export default function GitNormApp({
           subtitle="Drop in a folder or .zip file. It stays private unless you choose to publish it."
           action="Save project"
           onClose={() => setModal(null)}
-          onSubmit={async (form) => {
+          onSubmit={async (submission) => {
             setBusy(true);
             try {
+              const intentId = await uploadArchive(
+                submission,
+                "create_project",
+                undefined,
+                submission.title,
+              );
               const response = await fetch("/api/projects", {
                 method: "POST",
-                body: form,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  intentId,
+                  title: submission.title,
+                  description: submission.description,
+                  visibility: submission.visibility,
+                  note: submission.note,
+                }),
               });
               const data = (await response.json()) as ApiData;
               if (!response.ok) throw new Error(data.error);
@@ -393,12 +524,22 @@ export default function GitNormApp({
           subtitle="Choose the complete updated folder. GitNorm will show what changed and keep the old version safe."
           action="Save new version"
           onClose={() => setModal(null)}
-          onSubmit={async (form) => {
+          onSubmit={async (submission) => {
             setBusy(true);
             try {
+              const intentId = await uploadArchive(
+                submission,
+                "create_version",
+                selected.project.id,
+                selected.project.title,
+              );
               const response = await fetch(
                 `/api/projects/${selected.project.id}/versions`,
-                { method: "POST", body: form },
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ intentId, note: submission.note }),
+                },
               );
               const data = (await response.json()) as ApiData;
               if (!response.ok) throw new Error(data.error);
@@ -905,7 +1046,7 @@ function UploadDialog({
   subtitle: string;
   action: string;
   onClose: () => void;
-  onSubmit: (form: FormData) => Promise<void>;
+  onSubmit: (submission: UploadSubmission) => Promise<void>;
   busy: boolean;
   create?: boolean;
 }) {
@@ -939,9 +1080,10 @@ function UploadDialog({
         const entries = fileList
           .map((file) => ({
             file,
-            path:
+            path: normalizedUploadPath(
               (file as File & { webkitRelativePath?: string })
                 .webkitRelativePath || file.name,
+            ),
           }))
           .filter((entry) => {
             if (blockedUploadPath(entry.path)) {
@@ -959,6 +1101,8 @@ function UploadDialog({
           throw new Error("One of those files is over 8 MB.");
         if (total > CLIENT_MAX_PROJECT_SIZE)
           throw new Error("That folder is over 30 MB.");
+        if (new Set(entries.map((entry) => entry.path)).size !== entries.length)
+          throw new Error("That folder contains the same file path twice.");
         setPicked(entries);
         setSkipped(blocked);
         if (create && !name) {
@@ -976,21 +1120,17 @@ function UploadDialog({
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!picked.length) return;
-    const form = new FormData();
-    if (create) {
-      form.set("title", name);
-      form.set("description", description);
-      form.set("visibility", visibility);
-    }
-    form.set(
-      "note",
-      note || (create ? "First saved version" : "Added an update"),
-    );
-    picked.forEach(({ file, path }) => {
-      form.append("files", file);
-      form.append("paths", path);
+    await onSubmit({
+      files: picked,
+      ...(create
+        ? {
+            title: name.trim(),
+            description: description.trim(),
+            visibility: visibility as "private" | "public",
+          }
+        : {}),
+      note: note.trim() || (create ? "First saved version" : "Added an update"),
     });
-    await onSubmit(form);
   }
   return (
     <div

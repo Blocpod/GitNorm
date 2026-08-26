@@ -116,5 +116,8 @@ export async function DELETE(
   const { id } = await context.params;
   if (!(await deleteProjectFully(id, profile.id)))
     return json({ error: "We could not find that project." }, 404);
-  return json({ message: "Project and stored files permanently removed." });
+  return json({
+    message:
+      "Project removed. Stored uploads are securely deleted after their upload authorizations expire.",
+  });
 }

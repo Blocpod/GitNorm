@@ -1,11 +1,5 @@
-import {
-  currentProfile,
-  ensureSchema,
-  getD1,
-  getFilesBucket,
-  rateLimit,
-} from "@/lib/gitnorm";
-import { zipSync } from "fflate";
+import { currentProfile, ensureSchema, getD1, rateLimit } from "@/lib/gitnorm";
+import { getObject } from "@/lib/storage";
 
 export async function GET(
   request: Request,
@@ -45,23 +39,16 @@ export async function GET(
     .bind(id)
     .first<{ id: string }>();
   if (!latest) return new Response("No files", { status: 404 });
-  const files = await getD1()
+  const archive = await getD1()
     .prepare(
-      "SELECT path,storage_key AS storageKey FROM project_files WHERE version_id=?",
+      "SELECT storage_key AS storageKey FROM project_files WHERE version_id=? LIMIT 1",
     )
     .bind(latest.id)
-    .all<{ path: string; storageKey: string }>();
-  const archive: Record<string, Uint8Array> = {};
-  for (const file of files.results) {
-    const object = await getFilesBucket().get(file.storageKey);
-    if (object) archive[file.path] = new Uint8Array(await object.arrayBuffer());
-  }
-  const zip = zipSync(archive, { level: 6 });
-  const body = zip.buffer.slice(
-    zip.byteOffset,
-    zip.byteOffset + zip.byteLength,
-  ) as ArrayBuffer;
-  return new Response(body, {
+    .first<{ storageKey: string }>();
+  if (!archive) return new Response("No files", { status: 404 });
+  const object = await getObject(archive.storageKey);
+  if (!object) return new Response("No files", { status: 404 });
+  return new Response(object.body, {
     headers: {
       "Content-Type": "application/zip",
       "Content-Disposition": `attachment; filename="${project.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "project"}.zip"`,
