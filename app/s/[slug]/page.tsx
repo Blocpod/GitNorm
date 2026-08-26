@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ensureSchema, getD1 } from '@/lib/gitnorm';
+import ShareButton from '@/app/components/ShareButton';
 
 async function publicProject(slug:string){
   await ensureSchema();
@@ -22,7 +23,7 @@ export default async function SharedProject({params}:{params:Promise<{slug:strin
     <header className="share-header"><Link className="brand" href="/"><span className="brand-mark">G</span><span>GitNorm</span></Link><span className="made-with">Made with GitNorm</span></header>
     <section className="share-hero">
       <div className={`share-cover ${project.accent}`}><span>{project.icon}</span></div>
-      <div className="share-intro"><div className="share-kicker">A PROJECT BY @{project.handle}</div><h1>{project.title}</h1><p>{project.description}</p><div className="share-actions"><a className="primary-button" href={`/api/projects/${project.id}/download?share=${project.slug}`}>↓ Download project</a><button type="button" className="secondary-button">↗ Share</button></div><div className="share-meta"><span>Saved version {project.number}</span><span>{project.fileCount} files</span><span>{formatBytes(project.totalSize)}</span></div></div>
+      <div className="share-intro"><div className="share-kicker">A PROJECT BY <Link href={`/creator/${project.handle}`}>@{project.handle}</Link></div><h1>{project.title}</h1><p>{project.description}</p><div className="share-actions"><a className="primary-button" href={`/api/projects/${project.id}/download?share=${project.slug}`}>↓ Download project</a><ShareButton title={project.title} text={project.description||`See what ${project.creator} made.`}/></div><div className="share-meta"><span>Saved version {project.number}</span><span>{project.fileCount} files</span><span>{formatBytes(project.totalSize)}</span></div></div>
     </section>
     <section className="share-content"><article><h2>About this project</h2><p>{project.about||`${project.creator} made ${project.title} and shared it with the world.`}</p></article><aside><h2>What’s inside</h2><div className="public-files">{files.slice(0,12).map(file=><a key={file.id} href={`/api/files/${file.id}`}><span>{fileIcon(file.path)}</span><span>{file.path}</span><small>{formatBytes(file.size)}</small></a>)}</div>{files.length>12&&<p className="more-files">+ {files.length-12} more files in the download</p>}</aside></section>
     <footer><span>GitNorm keeps software simple.</span><Link href="/">Save something you made →</Link></footer>
