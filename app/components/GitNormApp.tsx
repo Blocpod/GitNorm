@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { unzip } from "fflate";
+import { BrandMark, ProjectIcon, WorkflowArt } from "./VisualAssets";
 
 type Project = {
   id: string;
@@ -286,7 +287,7 @@ export default function GitNormApp({
     <main className="app-shell">
       <header className="site-header">
         <button className="brand brand-button" onClick={goHome}>
-          <span className="brand-mark">G</span>
+          <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </button>
         <nav className="top-nav" aria-label="Main navigation">
@@ -481,7 +482,7 @@ function Dashboard({
       ) : (
         <div className="empty-shelf">
           <div className="empty-art">
-            <span>＋</span>
+            <WorkflowArt step="drop" />
           </div>
           <h2>Your shelf is ready.</h2>
           <p>
@@ -506,7 +507,7 @@ function ProjectCard({
   return (
     <button className="project-card project-card-button" onClick={onClick}>
       <div className={`project-cover ${project.accent}`}>
-        <span>{project.icon}</span>
+        <ProjectIcon icon={project.icon} />
       </div>
       <div className="project-body">
         <div className="project-title-row">
@@ -545,7 +546,7 @@ function DiscoverView({ projects }: { projects: Project[] }) {
               className="discover-card"
             >
               <div className={`discover-art ${project.accent}`}>
-                <span>{project.icon}</span>
+                <ProjectIcon icon={project.icon} />
               </div>
               <div>
                 <span className="creator">@{project.handle}</span>
@@ -707,7 +708,9 @@ function ProjectView({
         ← My projects
       </button>
       <div className="project-hero">
-        <div className={`project-emblem ${project.accent}`}>{project.icon}</div>
+        <div className={`project-emblem ${project.accent}`}>
+          <ProjectIcon icon={project.icon} />
+        </div>
         <div className="project-heading">
           <div className="project-badges">
             <span className={`status-pill ${project.visibility}`}>
@@ -780,7 +783,7 @@ function ProjectView({
           </article>
           <aside className="share-card">
             <div className={`share-mini-art ${project.accent}`}>
-              {project.icon}
+              <ProjectIcon icon={project.icon} />
             </div>
             <h2>
               {project.visibility === "public"

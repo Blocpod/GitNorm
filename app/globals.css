@@ -75,16 +75,11 @@ a {
 }
 
 .brand-mark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  color: white;
-  background: var(--ink);
-  font-family: Georgia, serif;
-  font-style: italic;
-  box-shadow: 3px 3px 0 #efca4a;
+  display: block;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 7px rgba(25, 23, 19, 0.18));
 }
 
 .top-nav {
@@ -583,10 +578,13 @@ footer {
   width: 46px;
   height: 46px;
   border-radius: 14px;
-  background: #cde4d5;
-  color: #24533d;
-  font-size: 22px;
-  font-weight: 900;
+  background: #e7efe9;
+  box-shadow: inset 0 0 0 1px rgba(34, 31, 25, 0.06);
+}
+.auth-icon img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
 }
 .auth-card label {
   display: grid;
@@ -906,14 +904,18 @@ footer {
 .empty-art {
   display: grid;
   place-items: center;
-  width: 76px;
-  height: 76px;
+  width: 118px;
+  height: 118px;
   margin-bottom: 18px;
   border-radius: 22px;
-  color: white;
-  background: var(--orange);
-  box-shadow: 6px 6px 0 #efca4a;
-  font-size: 34px;
+  background: #e6efe9;
+  box-shadow: 6px 6px 0 #d7c47a;
+  overflow: hidden;
+}
+.empty-art img {
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
 }
 
 .empty-shelf h2 {
@@ -1826,16 +1828,17 @@ footer {
 }
 .how-it-works > div {
   padding: 24px;
+  border: 1px solid rgba(39, 35, 29, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 253, 248, 0.62);
 }
-.how-it-works > div > span {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  color: white;
-  background: var(--ink);
-  font-weight: 850;
+.workflow-art {
+  display: block;
+  width: 168px;
+  height: 168px;
+  margin: -8px auto 8px;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 18px rgba(36, 32, 26, 0.11));
 }
 .how-it-works h2 {
   font-family: Georgia, serif;
@@ -1869,6 +1872,48 @@ footer {
   border-radius: 28px;
   font-size: 100px;
   box-shadow: 9px 9px 0 rgba(29, 28, 25, 0.13);
+}
+
+.visual-project-icon {
+  width: 68px;
+  height: 68px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  filter: drop-shadow(0 9px 10px rgba(35, 31, 24, 0.17));
+}
+
+.project-cover > img,
+.discover-art > img,
+.project-emblem > img,
+.share-mini-art > img,
+.share-cover > img {
+  object-fit: contain;
+  filter: drop-shadow(0 14px 14px rgba(35, 31, 24, 0.16));
+}
+
+.project-cover > img {
+  width: 118px;
+  height: 118px;
+}
+
+.discover-art > img {
+  width: 140px;
+  height: 140px;
+}
+
+.project-emblem > img {
+  width: 94px;
+  height: 94px;
+}
+
+.share-mini-art > img {
+  width: 100px;
+  height: 100px;
+}
+
+.share-cover > img {
+  width: min(70%, 320px);
+  height: auto;
 }
 .share-kicker {
   color: var(--green);

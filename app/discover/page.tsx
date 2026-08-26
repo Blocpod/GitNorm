@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ensureSchema, getD1 } from "@/lib/gitnorm";
+import { BrandMark, ProjectIcon } from "@/app/components/VisualAssets";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default async function DiscoverPage({
     <main className="creator-page">
       <header className="share-header">
         <Link className="brand" href="/">
-          <span className="brand-mark">G</span>
+          <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
         <Link className="secondary-button" href="/#get-started">
@@ -84,7 +85,7 @@ export default async function DiscoverPage({
                 className="discover-card"
               >
                 <div className={`discover-art ${project.accent}`}>
-                  <span>{project.icon}</span>
+                  <ProjectIcon icon={project.icon} />
                 </div>
                 <div>
                   <span className="creator">@{project.handle}</span>

@@ -134,7 +134,7 @@ export async function POST(request: Request) {
         size: file.size,
       });
     }
-    const iconChoices = ["✦", "◒", "⌁", "✿", "◆"];
+    const iconChoices = ["orbit", "sprout", "prism", "wave"];
     const accentChoices = ["mint", "sun", "lilac", "coral", "sky"];
     const statements = [
       getD1()

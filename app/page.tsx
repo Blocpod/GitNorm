@@ -2,6 +2,11 @@ import GitNormApp from "./components/GitNormApp";
 import AuthPanel from "./components/AuthPanel";
 import Link from "next/link";
 import { currentProfile } from "@/lib/gitnorm";
+import {
+  BrandMark,
+  ProjectIcon,
+  WorkflowArt,
+} from "./components/VisualAssets";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +27,7 @@ export default async function Home() {
     <main className="landing">
       <header className="landing-header">
         <Link className="brand" href="/">
-          <span className="brand-mark">G</span>
+          <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
         <div className="landing-nav">
@@ -64,14 +69,14 @@ export default async function Home() {
               <small>My projects</small>
             </div>
             <div className="visual-card coral">
-              <b>✦</b>
+              <ProjectIcon icon="orbit" className="visual-project-icon" />
               <div>
                 <strong>Weekend Picker</strong>
                 <span>Safely saved · Public</span>
               </div>
             </div>
             <div className="visual-card mint">
-              <b>🪴</b>
+              <ProjectIcon icon="sprout" className="visual-project-icon" />
               <div>
                 <strong>Plant Pal</strong>
                 <span>Safely saved · Only me</span>
@@ -83,17 +88,17 @@ export default async function Home() {
       </section>
       <section className="how-it-works">
         <div>
-          <span>1</span>
+          <WorkflowArt step="drop" className="workflow-art" />
           <h2>Drop it in</h2>
           <p>Choose the folder or .zip your AI builder made.</p>
         </div>
         <div>
-          <span>2</span>
+          <WorkflowArt step="keep" className="workflow-art" />
           <h2>Keep making</h2>
           <p>Add updates anytime. Every older version stays safe.</p>
         </div>
         <div>
-          <span>3</span>
+          <WorkflowArt step="show" className="workflow-art" />
           <h2>Show it off</h2>
           <p>Publish a beautiful page and send one simple link.</p>
         </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ensureSchema, getD1 } from "@/lib/gitnorm";
+import { BrandMark, ProjectIcon } from "@/app/components/VisualAssets";
 
 async function creator(handle: string) {
   await ensureSchema();
@@ -68,7 +69,7 @@ export default async function CreatorPage({
     <main className="creator-page">
       <header className="share-header">
         <Link className="brand" href="/">
-          <span className="brand-mark">G</span>
+          <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
         <span className="made-with">Creator profile</span>
@@ -95,7 +96,7 @@ export default async function CreatorPage({
                 className="discover-card"
               >
                 <div className={`discover-art ${project.accent}`}>
-                  <span>{project.icon}</span>
+                  <ProjectIcon icon={project.icon} />
                 </div>
                 <div>
                   <span className="creator">Made by @{profile.handle}</span>

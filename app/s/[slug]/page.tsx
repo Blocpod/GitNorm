@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ensureSchema, getD1 } from "@/lib/gitnorm";
 import ShareButton from "@/app/components/ShareButton";
+import { BrandMark, ProjectIcon } from "@/app/components/VisualAssets";
 
 async function publicProject(slug: string) {
   await ensureSchema();
@@ -76,14 +77,14 @@ export default async function SharedProject({
     <main className="share-page">
       <header className="share-header">
         <Link className="brand" href="/">
-          <span className="brand-mark">G</span>
+          <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
         <span className="made-with">Made with GitNorm</span>
       </header>
       <section className="share-hero">
         <div className={`share-cover ${project.accent}`}>
-          <span>{project.icon}</span>
+          <ProjectIcon icon={project.icon} />
         </div>
         <div className="share-intro">
           <div className="share-kicker">

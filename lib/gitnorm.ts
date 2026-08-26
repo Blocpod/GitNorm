@@ -29,7 +29,7 @@ export async function ensureSchema() {
     `CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL)`,
     `CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`,
     `CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)`,
-    `CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES profiles(id), slug TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', about TEXT NOT NULL DEFAULT '', icon TEXT NOT NULL DEFAULT '✦', accent TEXT NOT NULL DEFAULT 'mint', visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private','public')), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER)`,
+    `CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES profiles(id), slug TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', about TEXT NOT NULL DEFAULT '', icon TEXT NOT NULL DEFAULT 'orbit', accent TEXT NOT NULL DEFAULT 'mint', visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private','public')), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug)`,
     `CREATE INDEX IF NOT EXISTS idx_projects_owner_updated ON projects(owner_id, updated_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_projects_public_updated ON projects(visibility, updated_at DESC)`,

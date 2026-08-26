@@ -5,12 +5,12 @@ import {
   startRegistration,
 } from "@simplewebauthn/browser";
 import { useState } from "react";
+import { BrandMark } from "./VisualAssets";
 
 type Mode = "register" | "login";
 
 export default function AuthPanel() {
   const [mode, setMode] = useState<Mode>("register");
-  const [displayName, setDisplayName] = useState("");
   const [handle, setHandle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -93,7 +93,9 @@ export default function AuthPanel() {
       </div>
       {mode === "register" ? (
         <form onSubmit={register}>
-          <div className="auth-icon">⌁</div>
+          <div className="auth-icon">
+            <BrandMark />
+          </div>
           <h2 id="auth-title">Make your software shelf.</h2>
           <p>
             Your device creates a passkey—no password and no ChatGPT account.
@@ -106,8 +108,6 @@ export default function AuthPanel() {
               minLength={2}
               maxLength={60}
               autoComplete="name"
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
               placeholder="Alex Rivera"
             />
           </label>
@@ -141,7 +141,9 @@ export default function AuthPanel() {
         </form>
       ) : (
         <div className="auth-login">
-          <div className="auth-icon">✓</div>
+          <div className="auth-icon">
+            <BrandMark />
+          </div>
           <h2 id="auth-title">Welcome back.</h2>
           <p>
             Use the passkey saved on your phone, computer, or password manager.
