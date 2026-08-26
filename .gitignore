@@ -10,6 +10,11 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/.playwright-cli/
+/test-fixtures/weekend-picker/
+/test-fixtures/weekend-picker-v2.zip
 
 # next.js
 /.next/
