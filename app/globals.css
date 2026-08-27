@@ -554,10 +554,21 @@ footer {
   box-shadow: 0 2px 8px rgba(30, 27, 20, 0.08);
 }
 .auth-card form,
-.auth-login {
+.auth-login,
+.auth-unavailable {
   display: flex;
   flex-direction: column;
   padding: 30px;
+}
+.auth-unavailable > span {
+  width: fit-content;
+  padding: 8px 11px;
+  border: 1px solid #dfc58e;
+  border-radius: 999px;
+  background: #fff7df;
+  color: #6d5217;
+  font-size: 12px;
+  font-weight: 800;
 }
 .auth-card h2 {
   margin: 13px 0 7px;

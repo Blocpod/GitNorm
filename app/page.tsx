@@ -2,12 +2,14 @@ import GitNormApp from "./components/GitNormApp";
 import AuthPanel from "./components/AuthPanel";
 import Link from "next/link";
 import { currentProfile } from "@/lib/gitnorm";
+import { deploymentReadiness } from "@/lib/deployment";
 import { BrandMark, ProjectIcon, WorkflowArt } from "./components/VisualAssets";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const user = await currentProfile();
+  const readiness = deploymentReadiness();
+  const user = readiness.ready ? await currentProfile() : null;
   if (user)
     return (
       <GitNormApp
@@ -110,7 +112,7 @@ export default async function Home() {
             sent through ChatGPT—or asked to remember another password.
           </p>
         </div>
-        <AuthPanel />
+        <AuthPanel serviceReady={readiness.ready} />
       </section>
       <footer>
         <span>GitNorm · GitHub for normies</span>
