@@ -25,7 +25,7 @@ async function register(page: Page, displayName: string, handle: string) {
   await expect(
     page.getByRole("heading", {
       name: new RegExp(
-        `Good (?:morning|afternoon|evening), ${displayName.split(" ")[0]}`,
+        `Look what you’ve brought to life, ${displayName.split(" ")[0]}`,
       ),
     }),
   ).toBeVisible();
@@ -43,7 +43,9 @@ test("standalone passkey accounts preserve private work and revoke public links"
   await addVirtualPasskey(ownerContext, owner);
   await register(owner, "Owner Maker", ownerHandle);
 
-  await owner.getByRole("button", { name: "Add your first project →" }).click();
+  await owner
+    .getByRole("button", { name: "Give your first app a home →" })
+    .click();
   const chooserPromise = owner.waitForEvent("filechooser");
   await owner.getByRole("button", { name: "Choose .zip" }).click();
   const chooser = await chooserPromise;
@@ -297,7 +299,7 @@ test("standalone passkey accounts preserve private work and revoke public links"
   await owner.getByRole("button", { name: "Sign in with a passkey →" }).click();
   await expect(
     owner.getByRole("heading", {
-      name: /Good (?:morning|afternoon|evening), Owner/,
+      name: /Look what you’ve brought to life, Owner/,
     }),
   ).toBeVisible();
 

@@ -78,8 +78,8 @@ export default async function SharedProject({
     return (
       <PublicServiceUnavailable
         eyebrow="SHARED PROJECTS"
-        title="Shared project pages are getting ready."
-        description="Published project pages will be available as soon as GitNorm’s secure production storage finishes connecting."
+        title="Good work deserves a proper stage."
+        description="Shared project pages are built and waiting. They’ll open as soon as GitNorm’s secure vault finishes connecting."
       />
     );
   }
@@ -94,7 +94,7 @@ export default async function SharedProject({
           <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
-        <span className="made-with">Made with GitNorm</span>
+        <span className="made-with">Kept and shared with GitNorm</span>
       </header>
       <section className="share-hero">
         <div className={`share-cover ${project.accent}`}>
@@ -102,7 +102,7 @@ export default async function SharedProject({
         </div>
         <div className="share-intro">
           <div className="share-kicker">
-            A PROJECT BY{" "}
+            BROUGHT TO LIFE BY{" "}
             <Link href={`/creator/${project.handle}`}>@{project.handle}</Link>
           </div>
           <h1>{project.title}</h1>
@@ -112,7 +112,7 @@ export default async function SharedProject({
               className="primary-button"
               href={`/api/projects/${project.id}/download?share=${project.slug}`}
             >
-              ↓ Download project
+              ↓ Take a closer look
             </a>
             <ShareButton
               title={project.title}
@@ -120,7 +120,7 @@ export default async function SharedProject({
             />
           </div>
           <div className="share-meta">
-            <span>Saved version {project.number}</span>
+            <span>Version {project.number}, safely kept</span>
             <span>{project.fileCount} files</span>
             <span>{formatBytes(project.totalSize)}</span>
           </div>
@@ -128,14 +128,14 @@ export default async function SharedProject({
       </section>
       <section className="share-content">
         <article>
-          <h2>About this project</h2>
+          <h2>Why this exists</h2>
           <p>
             {project.about ||
-              `${project.creator} made ${project.title} and shared it with the world.`}
+              `${project.creator} turned an idea into ${project.title}—and decided it was worth sharing.`}
           </p>
         </article>
         <aside>
-          <h2>What’s inside</h2>
+          <h2>Everything behind it</h2>
           <div className="public-files">
             {files.slice(0, 12).map((file) => (
               <a key={file.id} href={`/api/files/${file.id}`}>
@@ -153,8 +153,8 @@ export default async function SharedProject({
         </aside>
       </section>
       <footer>
-        <span>GitNorm keeps software simple.</span>
-        <Link href="/">Save something you made →</Link>
+        <span>Made by a person. Kept with care.</span>
+        <Link href="/">Give your work a home →</Link>
       </footer>
     </main>
   );

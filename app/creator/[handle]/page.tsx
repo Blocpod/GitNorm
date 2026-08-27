@@ -46,16 +46,16 @@ export async function generateMetadata({
   if (!data) return { title: "Creator not found — GitNorm" };
   return {
     title: `${data.profile.displayName} (@${data.profile.handle}) — GitNorm`,
-    description: `See the software ${data.profile.displayName} made with GitNorm.`,
+    description: `See what ${data.profile.displayName} brought to life—and the ideas they chose to share.`,
     openGraph: {
       title: `${data.profile.displayName} on GitNorm`,
-      description: `See ${data.projects.length} public ${data.projects.length === 1 ? "project" : "projects"}.`,
+      description: `${data.projects.length} ${data.projects.length === 1 ? "idea brought to life" : "ideas brought to life"} and shared on GitNorm.`,
       images: [],
     },
     twitter: {
       card: "summary",
       title: `${data.profile.displayName} on GitNorm`,
-      description: `See ${data.projects.length} public ${data.projects.length === 1 ? "project" : "projects"}.`,
+      description: `${data.projects.length} ${data.projects.length === 1 ? "idea brought to life" : "ideas brought to life"} and shared on GitNorm.`,
       images: [],
     },
   };
@@ -70,8 +70,8 @@ export default async function CreatorPage({
     return (
       <PublicServiceUnavailable
         eyebrow="CREATOR PROFILES"
-        title="Creator shelves are getting ready."
-        description="Public creator profiles will be available as soon as GitNorm’s secure production storage finishes connecting."
+        title="A body of work deserves a proper entrance."
+        description="Creator shelves are built and waiting. They’ll open as soon as GitNorm’s secure vault finishes connecting."
       />
     );
   }
@@ -86,13 +86,13 @@ export default async function CreatorPage({
           <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
-        <span className="made-with">Creator profile</span>
+        <span className="made-with">A body of work</span>
       </header>
       <section className="page-shell">
         <div className="creator-profile">
           <div className="big-avatar">{initials(profile.displayName)}</div>
           <div>
-            <div className="eyebrow">SOFTWARE SHELF</div>
+            <div className="eyebrow">THINGS BROUGHT TO LIFE</div>
             <h1>{profile.displayName}</h1>
             <p>
               @{profile.handle} · {projects.length} public{" "}
@@ -113,9 +113,11 @@ export default async function CreatorPage({
                   <ProjectIcon icon={project.icon} />
                 </div>
                 <div>
-                  <span className="creator">Made by @{profile.handle}</span>
+                  <span className="creator">
+                    Brought to life by @{profile.handle}
+                  </span>
                   <h2>{project.title}</h2>
-                  <p>{project.description || "A delightful little project."}</p>
+                  <p>{project.description || "An idea worth sharing."}</p>
                   <small>
                     {project.fileCount} files ·{" "}
                     {new Date(project.updatedAt).toLocaleDateString()}
@@ -126,14 +128,16 @@ export default async function CreatorPage({
           </div>
         ) : (
           <div className="empty-shelf">
-            <h2>Nothing public here yet.</h2>
-            <p>{profile.displayName} hasn’t published a project.</p>
+            <h2>The best work is still taking shape.</h2>
+            <p>
+              {profile.displayName} hasn’t put a project into the world yet.
+            </p>
           </div>
         )}
       </section>
       <footer>
-        <span>GitNorm keeps software simple.</span>
-        <Link href="/">Make your own software shelf →</Link>
+        <span>Every body of work starts with one thing worth keeping.</span>
+        <Link href="/">Start yours on GitNorm →</Link>
       </footer>
     </main>
   );

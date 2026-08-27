@@ -68,17 +68,20 @@ export default async function DiscoverPage({
           <span>GitNorm</span>
         </Link>
         <Link className="secondary-button" href="/#get-started">
-          Make your shelf
+          Start your shelf
         </Link>
       </header>
       <section className="page-shell">
         <div className="eyebrow">
-          <span className="pulse" /> MADE WITH GITNORM
+          <span className="pulse" /> BUILT OUT OF CURIOSITY
         </div>
         <div className="discover-title">
           <div>
-            <h1>See what people made.</h1>
-            <p>Small tools, personal apps, and delightful experiments.</p>
+            <h1>Meet the people who made the thing they needed.</h1>
+            <p>
+              Useful little apps, ambitious experiments, and ideas that refused
+              to stay ideas.
+            </p>
           </div>
           <form>
             <label className="search-box">
@@ -94,10 +97,10 @@ export default async function DiscoverPage({
         </div>
         {!serviceReady ? (
           <div className="empty-shelf public-service-unavailable" role="status">
-            <h2>Discovery is getting its shelves ready.</h2>
+            <h2>The gallery is waiting backstage.</h2>
             <p>
-              The gallery is still here. Public projects will appear as soon as
-              GitNorm’s secure production storage finishes connecting.
+              Discovery is built and ready. Public work will take the stage as
+              soon as GitNorm’s secure vault finishes connecting.
             </p>
             <Link className="secondary-button" href="/">
               Return to GitNorm
@@ -131,12 +134,12 @@ export default async function DiscoverPage({
             <h2>
               {term
                 ? "No projects matched that search."
-                : "The gallery is waiting for its first project."}
+                : "Be the first to put something out there."}
             </h2>
             <p>
               {term
                 ? "Try another word or browse everything."
-                : "Publish something you made and it will appear here."}
+                : "Publish the project you keep showing your friends. It belongs here."}
             </p>
             {term && (
               <Link className="secondary-button" href="/discover">
@@ -147,8 +150,8 @@ export default async function DiscoverPage({
         )}
       </section>
       <footer>
-        <span>GitNorm keeps software simple.</span>
-        <Link href="/#get-started">Save something you made →</Link>
+        <span>Every useful thing started as somebody’s little idea.</span>
+        <Link href="/#get-started">Give yours a home →</Link>
       </footer>
     </main>
   );

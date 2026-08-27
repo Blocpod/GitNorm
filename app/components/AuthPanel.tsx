@@ -82,12 +82,12 @@ export default function AuthPanel({
           <div className="auth-icon">
             <BrandMark />
           </div>
-          <h2 id="auth-title">Almost ready.</h2>
+          <h2 id="auth-title">The doors are almost open.</h2>
           <p>
-            GitNorm is finishing its secure storage setup. The site is online,
-            but new accounts are paused so nothing you save can be lost.
+            We’re connecting the secure vault behind GitNorm. New accounts are
+            paused until every app and every version can be protected properly.
           </p>
-          <span>Please check back shortly.</span>
+          <span>Worth the short wait.</span>
         </div>
       ) : (
         <>
@@ -116,10 +116,10 @@ export default function AuthPanel({
               <div className="auth-icon">
                 <BrandMark />
               </div>
-              <h2 id="auth-title">Make your software shelf.</h2>
+              <h2 id="auth-title">Start your body of work.</h2>
               <p>
-                Your device creates a passkey—no password and no ChatGPT
-                account.
+                One private home for everything you build. Your device creates a
+                passkey—no password and no ChatGPT account.
               </p>
               <label>
                 Your name
@@ -156,8 +156,7 @@ export default function AuthPanel({
                 {busy ? "Waiting for your device…" : "Create my account →"}
               </button>
               <small>
-                Your name and handle appear only when you publish. Projects
-                start private.
+                Everything starts private. Share only when you’re proud of it.
               </small>
             </form>
           ) : (
@@ -165,10 +164,10 @@ export default function AuthPanel({
               <div className="auth-icon">
                 <BrandMark />
               </div>
-              <h2 id="auth-title">Welcome back.</h2>
+              <h2 id="auth-title">Pick up where you left off.</h2>
               <p>
-                Use the passkey saved on your phone, computer, or password
-                manager.
+                Your passkey brings you straight back to every app and every
+                version you’ve saved.
               </p>
               <button
                 className="primary-button full"

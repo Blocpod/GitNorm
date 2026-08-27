@@ -38,21 +38,23 @@ export default async function Home() {
       <section className="landing-hero">
         <div className="landing-copy">
           <div className="eyebrow">
-            <span className="pulse" /> SOFTWARE, MINUS THE SCARY PARTS
+            <span className="pulse" /> THE HOME FOR EVERYTHING YOU BUILD
           </div>
           <h1>
-            Your apps deserve
-            <br />a <em>home.</em>
+            Build freely.
+            <br />
+            Lose <em>nothing.</em>
           </h1>
           <p>
-            Save, update, and show off the software you make—with no commands,
-            no jargon, and nothing to break.
+            GitNorm gives every app you build with AI a permanent home—every
+            version organized, every idea easy to find, and every win ready to
+            share. No Git required.
           </p>
           <div className="landing-actions">
             <a className="primary-button" href="#get-started">
-              Add your first project <span>→</span>
+              Give your first app a home <span>→</span>
             </a>
-            <span>Free to start · private by default</span>
+            <span>Private by default · yours to publish</span>
           </div>
         </div>
         <div
@@ -70,53 +72,54 @@ export default async function Home() {
               <ProjectIcon icon="orbit" className="visual-project-icon" />
               <div>
                 <strong>Weekend Picker</strong>
-                <span>Safely saved · Public</span>
+                <span>Every version kept · Public</span>
               </div>
             </div>
             <div className="visual-card mint">
               <ProjectIcon icon="sprout" className="visual-project-icon" />
               <div>
                 <strong>Plant Pal</strong>
-                <span>Safely saved · Only me</span>
+                <span>Still taking shape · Only me</span>
               </div>
             </div>
-            <div className="visual-success">✓ Every update is saved</div>
+            <div className="visual-success">✓ Nothing gets overwritten</div>
           </div>
         </div>
       </section>
       <section className="how-it-works">
         <div>
           <WorkflowArt step="drop" className="workflow-art" />
-          <h2>Drop it in</h2>
-          <p>Choose the folder or .zip your AI builder made.</p>
+          <h2>Bring it over</h2>
+          <p>Drop in a folder or ZIP. GitNorm handles the technical stuff.</p>
         </div>
         <div>
           <WorkflowArt step="keep" className="workflow-art" />
-          <h2>Keep making</h2>
-          <p>Add updates anytime. Every older version stays safe.</p>
+          <h2>Keep every good version</h2>
+          <p>Update without overwriting. Go back whenever you need.</p>
         </div>
         <div>
           <WorkflowArt step="show" className="workflow-art" />
-          <h2>Show it off</h2>
-          <p>Publish a beautiful page and send one simple link.</p>
+          <h2>Put it out there</h2>
+          <p>Turn any project into a polished page with one simple link.</p>
         </div>
       </section>
       <section className="auth-section">
         <div>
           <div className="eyebrow">
-            <span className="pulse" /> YOUR OWN ACCOUNT
+            <span className="pulse" /> YOUR WORK. YOUR ACCOUNT.
           </div>
-          <h2>GitNorm is its own place.</h2>
+          <h2>Your corner of the internet.</h2>
           <p>
-            Create an account with a passkey stored on your device. You won’t be
-            sent through ChatGPT—or asked to remember another password.
+            GitNorm stands on its own. Create an account with a passkey on your
+            device—no ChatGPT account, no password, and no platform between you
+            and what you made.
           </p>
         </div>
         <AuthPanel serviceReady={readiness.ready} />
       </section>
       <footer>
         <span>GitNorm · GitHub for normies</span>
-        <span>Made for people who make things.</span>
+        <span>Ideas become software here.</span>
       </footer>
     </main>
   );

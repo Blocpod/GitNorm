@@ -34,8 +34,8 @@ export default function PublicServiceUnavailable({
         </div>
       </section>
       <footer>
-        <span>GitNorm keeps software simple.</span>
-        <span>Made for people who make things.</span>
+        <span>Build freely. Lose nothing.</span>
+        <span>Ideas become software here.</span>
       </footer>
     </main>
   );

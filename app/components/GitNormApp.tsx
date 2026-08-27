@@ -474,8 +474,8 @@ export default function GitNormApp({
       )}
       {modal === "create" && (
         <UploadDialog
-          title="Add something you made"
-          subtitle="Drop in a folder or .zip file. It stays private unless you choose to publish it."
+          title="Bring in something you made"
+          subtitle="Drop in the folder or ZIP. GitNorm will give it a permanent home, private until you say otherwise."
           action="Save project"
           onClose={() => setModal(null)}
           onSubmit={async (submission) => {
@@ -520,8 +520,8 @@ export default function GitNormApp({
       )}
       {modal === "update" && selected && (
         <UploadDialog
-          title="Add an update"
-          subtitle="Choose the complete updated folder. GitNorm will show what changed and keep the old version safe."
+          title="Save what changed"
+          subtitle="Choose the complete updated folder. GitNorm will find the differences and preserve everything that came before."
           action="Save new version"
           onClose={() => setModal(null)}
           onSubmit={async (submission) => {
@@ -582,12 +582,12 @@ function Dashboard({
   return (
     <section className="hero-shell">
       <div className="eyebrow">
-        <span className="pulse" /> YOUR SOFTWARE SHELF
+        <span className="pulse" /> EVERYTHING YOU’VE BROUGHT TO LIFE
       </div>
       <div className="hero-copy">
         <div>
-          <h1>Good afternoon, {firstName}.</h1>
-          <p>Everything you’ve made, safe and ready to share.</p>
+          <h1>Look what you’ve brought to life, {firstName}.</h1>
+          <p>Every app. Every version. One calm place to keep building.</p>
         </div>
         <button className="primary-button" onClick={onCreate}>
           <span>＋</span> Add a project
@@ -596,21 +596,21 @@ function Dashboard({
       <div className="reassurance">
         <span className="reassurance-icon">✓</span>
         <div>
-          <strong>Your work is safe.</strong>
-          <span> Every update is saved, so you can always go back.</span>
+          <strong>Create without fear.</strong>
+          <span> New updates never erase the work that got you here.</span>
         </div>
       </div>
       <div className="section-heading">
         <h2>
-          My projects <span>{projects.length}</span>
+          Your body of work <span>{projects.length}</span>
         </h2>
       </div>
       {projects.length ? (
         <div className="project-grid">
           <button className="project-card add-card" onClick={onCreate}>
             <span className="add-icon">＋</span>
-            <strong>Add something you made</strong>
-            <span>Drop in a folder or a .zip file</span>
+            <strong>Bring in something you made</strong>
+            <span>Folder or ZIP. No setup.</span>
           </button>
           {projects.map((project) => (
             <ProjectCard
@@ -625,13 +625,13 @@ function Dashboard({
           <div className="empty-art">
             <WorkflowArt step="drop" />
           </div>
-          <h2>Your shelf is ready.</h2>
+          <h2>This is where your ideas start adding up.</h2>
           <p>
-            Add the folder or .zip your AI builder made. GitNorm will keep every
-            version safe for you.
+            Bring in the folder or ZIP your AI builder made. From then on, every
+            version has a place and every project has a future.
           </p>
           <button className="primary-button" onClick={onCreate}>
-            Add your first project →
+            Give your first app a home →
           </button>
         </div>
       )}
@@ -657,7 +657,7 @@ function ProjectCard({
             ● {project.visibility === "public" ? "Public" : "Only me"}
           </span>
         </div>
-        <p>{project.description || "Something wonderful in progress."}</p>
+        <p>{project.description || "An idea worth keeping."}</p>
         <div className="project-footer">
           <span>{relative(project.updatedAt)}</span>
           <span>→</span>
@@ -670,12 +670,15 @@ function DiscoverView({ projects }: { projects: Project[] }) {
   return (
     <section className="page-shell">
       <div className="eyebrow">
-        <span className="pulse" /> MADE WITH GITNORM
+        <span className="pulse" /> BUILT OUT OF CURIOSITY
       </div>
       <div className="page-title">
         <div>
-          <h1>See what people made.</h1>
-          <p>Small tools, personal apps, and delightful experiments.</p>
+          <h1>Meet the people who made the thing they needed.</h1>
+          <p>
+            Useful little apps, ambitious experiments, and ideas that refused to
+            stay ideas.
+          </p>
         </div>
       </div>
       {projects.length ? (
@@ -702,8 +705,10 @@ function DiscoverView({ projects }: { projects: Project[] }) {
         </div>
       ) : (
         <div className="empty-shelf">
-          <h2>The gallery is waiting for its first project.</h2>
-          <p>Publish one of yours and it will appear here.</p>
+          <h2>Be the first to put something out there.</h2>
+          <p>
+            Publish the project you keep showing your friends. It belongs here.
+          </p>
         </div>
       )}
     </section>
@@ -862,7 +867,7 @@ function ProjectView({
           <h1>{project.title}</h1>
           <p>
             {project.description ||
-              "Add a short description in project settings."}
+              "Give this project the one-line story it deserves."}
           </p>
         </div>
         <div className="project-actions">
@@ -899,7 +904,7 @@ function ProjectView({
           <article className="summary-main">
             <div className="summary-card">
               <div className="card-head">
-                <h2>Latest update</h2>
+                <h2>Where you left off</h2>
                 <span>
                   {relative(versions[0]?.createdAt || project.updatedAt)}
                 </span>
@@ -907,7 +912,7 @@ function ProjectView({
               <h3>{versions[0]?.note || "Project saved"}</h3>
               <p>{versions[0]?.summary}</p>
               <div className="change-chips">
-                <span>✓ {versions[0]?.fileCount || 0} files safe</span>
+                <span>✓ {versions[0]?.fileCount || 0} files protected</span>
                 <span>{formatBytes(versions[0]?.totalSize || 0)}</span>
               </div>
             </div>
@@ -918,7 +923,7 @@ function ProjectView({
               </div>
               <p>
                 {project.about ||
-                  "Tell people what inspired this project, what it does, or how you made it."}
+                  "Every project has a reason it exists. Tell people what sparked this one and why it matters."}
               </p>
             </div>
           </article>
@@ -928,13 +933,13 @@ function ProjectView({
             </div>
             <h2>
               {project.visibility === "public"
-                ? "Your project is live."
-                : "Ready to show it off?"}
+                ? "It’s out in the world."
+                : "This deserves to be seen."}
             </h2>
             <p>
               {project.visibility === "public"
-                ? "Anyone can see and download the newest version."
-                : "Publish a simple page anyone can open—no sign-in needed."}
+                ? "Anyone with the link can experience the newest version."
+                : "Publish a polished page anyone can open—no account, no explanation needed."}
             </p>
             {project.visibility === "public" && (
               <a
@@ -952,7 +957,7 @@ function ProjectView({
             >
               {project.visibility === "public"
                 ? "Make private"
-                : "Publish project"}
+                : "Share it with the world"}
             </button>
             <a
               className="text-button"
@@ -967,8 +972,8 @@ function ProjectView({
         <div className="file-panel">
           <div className="file-panel-head">
             <div>
-              <h2>What’s inside</h2>
-              <p>Your newest saved version, in plain sight.</p>
+              <h2>Everything that makes it work</h2>
+              <p>The newest version, organized and completely visible.</p>
             </div>
             <a
               className="secondary-button"
@@ -992,10 +997,10 @@ function ProjectView({
       {tab === "versions" && (
         <div className="versions-panel">
           <div className="versions-intro">
-            <h2>Nothing gets lost.</h2>
+            <h2>Go forward without fear.</h2>
             <p>
-              Every update stays here. Restoring makes a new copy and never
-              erases newer work.
+              Every version stays within reach. Bring an older one forward
+              anytime—nothing newer gets erased.
             </p>
           </div>
           <div className="timeline">
@@ -1364,7 +1369,7 @@ function SettingsDialog({
           ×
         </button>
         <div className="dialog-step">PROJECT SETTINGS</div>
-        <h2 id="settings-title">Make it yours.</h2>
+        <h2 id="settings-title">Tell the story well.</h2>
         <form
           onSubmit={(e) => {
             e.preventDefault();
