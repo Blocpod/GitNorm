@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { unzip, zipSync } from "fflate";
 import { BrandMark, ProjectIcon, WorkflowArt } from "./VisualAssets";
+import ThemeToggle from "./ThemeToggle";
 
 type Project = {
   id: string;
@@ -422,16 +423,19 @@ export default function GitNormApp({
             Discover
           </button>
         </nav>
-        <button
-          className="avatar"
-          onClick={() => {
-            setView("profile");
-            setSelected(null);
-          }}
-          aria-label="Open profile"
-        >
-          {initials(user.displayName)}
-        </button>
+        <div className="header-actions">
+          <ThemeToggle />
+          <button
+            className="avatar"
+            onClick={() => {
+              setView("profile");
+              setSelected(null);
+            }}
+            aria-label="Open profile"
+          >
+            {initials(user.displayName)}
+          </button>
+        </div>
       </header>
       {notice && (
         <div className="toast success" role="status">

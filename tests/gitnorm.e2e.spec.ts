@@ -31,6 +31,29 @@ async function register(page: Page, displayName: string, handle: string) {
   ).toBeVisible();
 }
 
+test("theme follows the system and remembers a manual choice", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ colorScheme: "dark" });
+  const page = await context.newPage();
+
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+  await page.getByRole("button", { name: "Switch to light mode" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  await page.goto("/discover");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+  await context.close();
+});
+
 test("standalone passkey accounts preserve private work and revoke public links", async ({
   browser,
 }) => {

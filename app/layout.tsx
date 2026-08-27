@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { canonicalOrigin } from "@/lib/runtime";
 import "./globals.css";
 
@@ -23,11 +23,38 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  colorScheme: "light dark",
+};
+
+const themeInitializer = `
+  (() => {
+    try {
+      const saved = localStorage.getItem("gitnorm-theme");
+      const theme = saved === "light" || saved === "dark"
+        ? saved
+        : matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute(
+        "content",
+        theme === "dark" ? "#111612" : "#f6f2e9"
+      );
+    } catch (_) {}
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="theme-color" content="#f6f2e9" />
+        <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />
+      </head>
       <body>{children}</body>
     </html>
   );

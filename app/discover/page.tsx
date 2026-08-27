@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ensureSchema, getD1 } from "@/lib/gitnorm";
 import { deploymentReadiness } from "@/lib/deployment";
 import { BrandMark, ProjectIcon } from "@/app/components/VisualAssets";
+import ThemeToggle from "@/app/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -67,9 +68,12 @@ export default async function DiscoverPage({
           <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
-        <Link className="secondary-button" href="/#get-started">
-          Start your shelf
-        </Link>
+        <div className="header-actions">
+          <ThemeToggle />
+          <Link className="secondary-button" href="/#get-started">
+            Start your shelf
+          </Link>
+        </div>
       </header>
       <section className="page-shell">
         <div className="eyebrow">

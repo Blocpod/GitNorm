@@ -4,6 +4,7 @@ import Link from "next/link";
 import { currentProfile } from "@/lib/gitnorm";
 import { deploymentReadiness } from "@/lib/deployment";
 import { BrandMark, ProjectIcon, WorkflowArt } from "./components/VisualAssets";
+import ThemeToggle from "./components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function Home() {
           <span>GitNorm</span>
         </Link>
         <div className="landing-nav">
+          <ThemeToggle />
           <Link href="/discover">Discover</Link>
           <a className="secondary-button" href="#get-started">
             Sign in

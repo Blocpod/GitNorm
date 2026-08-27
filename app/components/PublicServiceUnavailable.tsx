@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandMark } from "./VisualAssets";
+import ThemeToggle from "./ThemeToggle";
 
 export default function PublicServiceUnavailable({
   eyebrow,
@@ -17,9 +18,12 @@ export default function PublicServiceUnavailable({
           <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
-        <Link className="secondary-button" href="/">
-          Back home
-        </Link>
+        <div className="header-actions">
+          <ThemeToggle />
+          <Link className="secondary-button" href="/">
+            Back home
+          </Link>
+        </div>
       </header>
       <section className="page-shell">
         <div className="eyebrow">

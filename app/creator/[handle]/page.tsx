@@ -5,6 +5,7 @@ import { cache } from "react";
 import { ensureSchema, getD1 } from "@/lib/gitnorm";
 import { deploymentReadiness } from "@/lib/deployment";
 import { BrandMark, ProjectIcon } from "@/app/components/VisualAssets";
+import ThemeToggle from "@/app/components/ThemeToggle";
 import PublicServiceUnavailable from "@/app/components/PublicServiceUnavailable";
 
 const creator = cache(async (handle: string) => {
@@ -86,7 +87,10 @@ export default async function CreatorPage({
           <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
-        <span className="made-with">A body of work</span>
+        <div className="header-actions">
+          <ThemeToggle />
+          <span className="made-with">A body of work</span>
+        </div>
       </header>
       <section className="page-shell">
         <div className="creator-profile">

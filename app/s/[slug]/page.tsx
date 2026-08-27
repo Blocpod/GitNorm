@@ -6,6 +6,7 @@ import { ensureSchema, getD1 } from "@/lib/gitnorm";
 import { deploymentReadiness } from "@/lib/deployment";
 import ShareButton from "@/app/components/ShareButton";
 import { BrandMark, ProjectIcon } from "@/app/components/VisualAssets";
+import ThemeToggle from "@/app/components/ThemeToggle";
 import PublicServiceUnavailable from "@/app/components/PublicServiceUnavailable";
 
 const publicProject = cache(async (slug: string) => {
@@ -94,7 +95,10 @@ export default async function SharedProject({
           <BrandMark className="brand-mark" />
           <span>GitNorm</span>
         </Link>
-        <span className="made-with">Kept and shared with GitNorm</span>
+        <div className="header-actions">
+          <ThemeToggle />
+          <span className="made-with">Kept and shared with GitNorm</span>
+        </div>
       </header>
       <section className="share-hero">
         <div className={`share-cover ${project.accent}`}>
