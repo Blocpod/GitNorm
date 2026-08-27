@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ensureSchema, getD1 } from "@/lib/gitnorm";
+import { deploymentReadiness } from "@/lib/deployment";
 import { BrandMark, ProjectIcon } from "@/app/components/VisualAssets";
 
 export const dynamic = "force-dynamic";
@@ -9,41 +10,56 @@ export default async function DiscoverPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  await ensureSchema();
   const { q = "" } = await searchParams;
   const term = q.trim().slice(0, 80);
+  const serviceReady = deploymentReadiness().ready;
   const like = `%${term.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
   const query = `SELECT p.id,p.slug,p.title,p.description,p.icon,p.accent,p.updated_at AS updatedAt,pr.display_name AS creator,pr.handle,v.file_count AS fileCount FROM projects p JOIN profiles pr ON pr.id=p.owner_id LEFT JOIN versions v ON v.project_id=p.id AND v.number=(SELECT MAX(number) FROM versions WHERE project_id=p.id) WHERE p.visibility='public' AND p.deleted_at IS NULL ${term ? "AND (p.title LIKE ? ESCAPE '\\' OR p.description LIKE ? ESCAPE '\\' OR pr.handle LIKE ? ESCAPE '\\')" : ""} ORDER BY p.updated_at DESC LIMIT 48`;
-  const prepared = getD1().prepare(query);
-  const projects = term
-    ? (
-        await prepared.bind(like, like, like).all<{
-          id: string;
-          slug: string;
-          title: string;
-          description: string;
-          icon: string;
-          accent: string;
-          updatedAt: number;
-          creator: string;
-          handle: string;
-          fileCount: number;
-        }>()
-      ).results
-    : (
-        await prepared.all<{
-          id: string;
-          slug: string;
-          title: string;
-          description: string;
-          icon: string;
-          accent: string;
-          updatedAt: number;
-          creator: string;
-          handle: string;
-          fileCount: number;
-        }>()
-      ).results;
+  let projects: {
+    id: string;
+    slug: string;
+    title: string;
+    description: string;
+    icon: string;
+    accent: string;
+    updatedAt: number;
+    creator: string;
+    handle: string;
+    fileCount: number;
+  }[] = [];
+  if (serviceReady) {
+    await ensureSchema();
+    const prepared = getD1().prepare(query);
+    projects = term
+      ? (
+          await prepared.bind(like, like, like).all<{
+            id: string;
+            slug: string;
+            title: string;
+            description: string;
+            icon: string;
+            accent: string;
+            updatedAt: number;
+            creator: string;
+            handle: string;
+            fileCount: number;
+          }>()
+        ).results
+      : (
+          await prepared.all<{
+            id: string;
+            slug: string;
+            title: string;
+            description: string;
+            icon: string;
+            accent: string;
+            updatedAt: number;
+            creator: string;
+            handle: string;
+            fileCount: number;
+          }>()
+        ).results;
+  }
   return (
     <main className="creator-page">
       <header className="share-header">
@@ -76,7 +92,18 @@ export default async function DiscoverPage({
             </label>
           </form>
         </div>
-        {projects.length ? (
+        {!serviceReady ? (
+          <div className="empty-shelf public-service-unavailable" role="status">
+            <h2>Discovery is getting its shelves ready.</h2>
+            <p>
+              The gallery is still here. Public projects will appear as soon as
+              GitNorm’s secure production storage finishes connecting.
+            </p>
+            <Link className="secondary-button" href="/">
+              Return to GitNorm
+            </Link>
+          </div>
+        ) : projects.length ? (
           <div className="discover-grid">
             {projects.map((project) => (
               <Link

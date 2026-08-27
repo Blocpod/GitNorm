@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { ensureSchema, getD1 } from "@/lib/gitnorm";
+import { deploymentReadiness } from "@/lib/deployment";
 import { BrandMark, ProjectIcon } from "@/app/components/VisualAssets";
+import PublicServiceUnavailable from "@/app/components/PublicServiceUnavailable";
 
-async function creator(handle: string) {
+const creator = cache(async (handle: string) => {
   await ensureSchema();
   const profile = await getD1()
     .prepare(
@@ -29,13 +32,15 @@ async function creator(handle: string) {
       fileCount: number;
     }>();
   return { profile, projects: projects.results };
-}
+});
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ handle: string }>;
 }): Promise<Metadata> {
+  if (!deploymentReadiness().ready)
+    return { title: "Creator profiles — GitNorm" };
   const { handle } = await params;
   const data = await creator(handle);
   if (!data) return { title: "Creator not found — GitNorm" };
@@ -61,6 +66,15 @@ export default async function CreatorPage({
 }: {
   params: Promise<{ handle: string }>;
 }) {
+  if (!deploymentReadiness().ready) {
+    return (
+      <PublicServiceUnavailable
+        eyebrow="CREATOR PROFILES"
+        title="Creator shelves are getting ready."
+        description="Public creator profiles will be available as soon as GitNorm’s secure production storage finishes connecting."
+      />
+    );
+  }
   const { handle } = await params;
   const data = await creator(handle);
   if (!data) notFound();

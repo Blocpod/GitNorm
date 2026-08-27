@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { cache } from "react";
 import { ensureSchema, getD1 } from "@/lib/gitnorm";
+import { deploymentReadiness } from "@/lib/deployment";
 import ShareButton from "@/app/components/ShareButton";
 import { BrandMark, ProjectIcon } from "@/app/components/VisualAssets";
+import PublicServiceUnavailable from "@/app/components/PublicServiceUnavailable";
 
-async function publicProject(slug: string) {
+const publicProject = cache(async (slug: string) => {
   await ensureSchema();
   const project = await getD1()
     .prepare(
@@ -36,13 +39,15 @@ async function publicProject(slug: string) {
     .bind(project.versionId)
     .all<{ id: string; path: string; mimeType: string; size: number }>();
   return { project, files: files.results };
-}
+});
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
+  if (!deploymentReadiness().ready)
+    return { title: "Shared projects — GitNorm" };
   const { slug } = await params;
   const data = await publicProject(slug);
   if (!data) return { title: "Project not found — GitNorm" };
@@ -69,6 +74,15 @@ export default async function SharedProject({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  if (!deploymentReadiness().ready) {
+    return (
+      <PublicServiceUnavailable
+        eyebrow="SHARED PROJECTS"
+        title="Shared project pages are getting ready."
+        description="Published project pages will be available as soon as GitNorm’s secure production storage finishes connecting."
+      />
+    );
+  }
   const { slug } = await params;
   const data = await publicProject(slug);
   if (!data) notFound();

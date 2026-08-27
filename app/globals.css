@@ -945,6 +945,12 @@ footer {
   border: 0;
   cursor: pointer;
 }
+.public-service-unavailable {
+  min-height: 300px;
+}
+.public-service-unavailable .secondary-button {
+  width: fit-content;
+}
 
 .page-shell,
 .project-page {
